@@ -1,0 +1,294 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+}
+
+#root {
+  /* max-width: 1280px; */
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 20px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  color: white;
+  cursor: pointer;
+  transition: backgroud-color 0.25s;
+}
+button:hover {
+  background-color: rgb(104, 182, 255);
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: rgb(0, 132, 255);
+  }
+}
+
+.home_title{
+  color: #1721a8;
+  font-size: 100px;
+  margin: 0;
+}
+.search{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.search_button{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: rgb(0, 132, 255);
+  height: 25px;
+  width: 60px;
+  padding: 0;
+}
+
+.search_button>span{
+     margin-top:-3px;
+}
+
+.month_change{
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  align-items: center;
+  font-size: 30px;
+  
+}
+.arrow_button{
+  display: flex;
+  align-items: center;
+  height: 32px;
+  width: 32px;
+  padding: 0;
+  border: 0;
+  background-color: white;
+}
+.arrow{
+  height: 30px;
+}
+.month_calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 170px);
+  /* grid-template-rows: 30px repeat(1, 170px); */
+}
+
+.day{
+  position: relative;
+  padding: 10px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  margin: 0;
+  background-color: #f9f9f9;
+}
+
+.blank{
+  background-color: white;
+}
+
+.occ_day{
+  background-color: RGBA(0,255,255, 0.2);
+}
+.calendar_item_list{
+  color: rgb(5, 125, 129);
+  font-weight: 600;
+  position: absolute;
+  top: 30px;
+}
+
+.calendar_item{
+  font-size: 10px;
+  text-align: left;
+
+}
+
+.calendar_item>p{
+  margin: 0;
+}
+
+.day_date{
+  position: absolute;
+  top: 0px;
+  margin-top: 0;
+  font-weight: bold;
+}
+
+.day-name{
+  color: white;
+  background-color: rgb(0, 132, 255);
+  grid-row: 1;
+  height: 30px;
+  border: 1px solid #e0e0e0;
+}
+
+
+.calendar_info_card{
+  position: absolute;
+  top: 0;
+  left: 100%;
+  height: auto;
+  padding-left: 5px;
+  width: 200px;
+  text-align: left;
+  font-size: 12px;
+  background-color: white;
+  opacity: 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  line-height: 1;
+  display: block;
+  /* animation-fill-mode: forwards; */
+  max-height: calc(100vh - 20px);
+}
+
+.fade_in{
+  animation: fadeIn 0.3s forwards;
+}
+
+.fade_out{
+  animation: fadeOut 0.3s;
+
+}
+
+.calendar_info_card_block{
+  margin-bottom: 10px;
+}
+.calendar_info_card_block > p,a{
+  margin: 3px;
+}
+
+@keyframes fadeIn {
+  from {
+      opacity: 0;
+  }
+  to {
+      opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+      opacity: 1;
+  }
+  to {
+      opacity: 0;
+  }
+}
+
+.show{
+  text-align: left;
+  height: 500px;
+  font-size: 30px;
+}
+
+.show_image{
+  float: left;
+  margin-right: 7px;
+  height: 530px;
+}
+
+.showpage_buttons{
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap:10px;
+  margin-top: 25px;
+}
+
+.showpage_buttons > button{
+  background-color: rgb(0, 132, 255);
+  color: white;
+}
+
+.showpage_buttons > button:hover {
+  background-color: rgb(104, 182, 255); /* Change this to your desired hover color */
+}
+
+.search_container{
+  /* display: flex;
+  align-content: flex-start; */
+}
+
+.search_results{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-content: flex-start;
+  font-size: 35px;
+
+  gap:30px;
+  text-align: left;
+  
+}
+
+.search_result{
+  width: 800px;
+}
+.result_image{
+  float: left;
+  margin-right: 7px;
+  height: 400px;
+}
+
+.back_from_search{
+  display: flex;
+  justify-content: start;
+  margin-bottom: 20px;
+}
