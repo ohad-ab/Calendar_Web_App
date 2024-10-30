@@ -158,13 +158,17 @@ app.post('/add', async (req,res)=>{
 
 app.post('/delete',async (req,res)=>{
   try {
-    console.log(req.body)
-    await db.query('DELETE FROM episodes WHERE show_id=$1',[req.body.id]);
-    await db.query('DELETE FROM shows WHERE show_id=$1',[req.body.id]);
+    await db.query('DELETE FROM users_shows WHERE show_id=$1',[req.body.id]);
+    const remainingUserShows = await db.query('SELECT show_id FROM users_shows WHERE show_id=$1' ,[req.body.id]);
+    if(remainingUserShows.rows.length === 0)
+    {
+      await db.query('DELETE FROM episodes WHERE show_id=$1',[req.body.id]);
+      await db.query('DELETE FROM shows WHERE show_id=$1',[req.body.id]); 
+    }   
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
-    sendStatus(500);
+    res.sendStatus(500);
   }
 })
 

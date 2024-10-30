@@ -15,7 +15,8 @@ import Register from './Register';
 import Logout from './Logout';
 
 function App() {
-    const [user, setUser] = useState()
+    const [user, setUser] = useState();
+    
   // const [count, setCount] = useState(0)
 
   // return (
@@ -44,14 +45,36 @@ function App() {
   // )
     function Header(){
         const location = useLocation();
+        const [searchData, setSearchData] = useState({});
+        const navigate = useNavigate();
+
+
+    function handleSearch(event){
+        event.preventDefault();
+        navigate(`/search?q=${searchData.searchValue}`); 
+    }
+
+    function handleChange(event) {
+        setSearchData({
+            ...searchData,
+            searchValue: event.target.value
+        });
+      }
 
         return(
             <header>
-                <h1 className='home_title'>Calendar</h1>
-            <h2>Make your own series calendar</h2>
+            
+            <div className='titles_container'>
+                <h1 className='home-title'>Calendar</h1>
+                {/* <h2 className='sub-title'>Make your own series calendar</h2> */}
+            </div>
+            <form className='search' onSubmit={handleSearch}>
+                <input className='search_value' name='search_value' placeholder='search series' onChange={handleChange}></input>
+                <button className='search_button' type='submit'><span>serach</span></button>
+            </form>
             {
-             location.pathname !== '/login' || location.pathname !=='/register'?
-            <div>
+             (location.pathname !== '/login' && location.pathname !=='/register')?
+            <div className='logout-container'>
                 {/* <p>hello {message.user.email}</p>  */}
                 <Logout />
             </div>
@@ -84,7 +107,6 @@ function App() {
 
     function handleSearch(event){
         event.preventDefault();
-        console.log(searchData)
         navigate(`/search?q=${searchData.searchValue}`); 
     }
 
@@ -97,10 +119,7 @@ function App() {
 
     return message ? (
         <div>
-            <form className='search' onSubmit={handleSearch}>
-                <input className='search_value' name='search_value' placeholder='search series' onChange={handleChange}></input>
-                <button className='search_button' type='submit'><span>serach</span></button>
-            </form>
+            
             <Calendar shows={message.shows}/>
         </div>
     ):null;
@@ -113,7 +132,7 @@ function App() {
     <Router>
         <Header/>
             
-        <div>
+        <div className='content'>
             <Routes>
                 {/* <Route path="/about" element={<About />}/> */}
                 <Route path="/" element={<Home/>} />

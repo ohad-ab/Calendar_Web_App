@@ -45,9 +45,14 @@ function Show(){
       alert(error.statusText);
     })
   }
+  function handleBackButton(event){
+    event.preventDefault();
+    navigate(`/`); 
+  }
 
   return show.name && (
     <div className="show">
+      <button className="back_from_search" onClick={handleBackButton}>Back to calendar</button>
       <img className="show_image" src={show.image.original} />
       <h2>{show.name}</h2>
       <p>Premiered at {show.premiered}</p>
@@ -58,7 +63,7 @@ function Show(){
       <p>Summary: {show.summary.slice(show.summary.search(',')+1,-4)}</p>
       {!added?<button onClick={handleAddButton}>{'Add To Calendar'}</button> : 
         <div className="showpage_buttons">
-          <button onClick={()=>navigate('/')}>{'View On Calendar'}</button>
+          {/* <button onClick={()=>navigate('/')}>{'View On Calendar'}</button> */}
           <button onClick={handleDeleteButton}>{'Remove From Calendar'}</button>
         </div>
         }
