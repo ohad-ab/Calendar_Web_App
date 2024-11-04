@@ -27,6 +27,7 @@ function Login(){
   }
   return(
     <div className="login">
+      <h1 className="home-title">Calendar</h1>
       <form onSubmit={handleSubmit}>
       <input name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
       <input name="password" placeholder="Password" onChange={(e)=>setPaswword(e.target.value)} required/>

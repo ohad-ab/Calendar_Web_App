@@ -28,6 +28,7 @@ function Register(){
 
   return(
     <div className="register">
+      <h1 className="home-title">Calendar</h1>
       <form onSubmit={handleSubmit} >
         <input name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
         <input name="password" placeholder="Password" type="password" onChange={(e)=>setPaswword(e.target.value)} required/>

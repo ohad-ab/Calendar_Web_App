@@ -130,7 +130,8 @@ function App() {
 
   return (
     <Router>
-        <Header/>
+        {(location.pathname !== '/login' && location.pathname !=='/register')?<Header/>:''}
+        
             
         <div className='content'>
             <Routes>

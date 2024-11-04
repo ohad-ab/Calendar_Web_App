@@ -1,6 +1,7 @@
 import express from "express";
 import bodyParser from "body-parser";
-import cors from 'cors'
+import cors from 'cors';
+import path from 'path';
 import axios from "axios";
 import pg from "pg";
 import env from "dotenv";
@@ -11,7 +12,7 @@ import session from "express-session";
 import connectPgSimple from 'connect-pg-simple';
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 const API_URL = "https://api.tvmaze.com"
 const saltRounds = 10;
 env.config();
@@ -25,6 +26,8 @@ const db = new pg.Client({
 db.connect();
 
 const PgSession = connectPgSimple(session);
+
+// app.use(express.static(path.join(__dirname, 'client/dist')))
 
 app.use(
   session({
@@ -49,6 +52,9 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(passport.initialize());
 app.use(passport.session());
 
+// app.get('*', (req,res)=>{
+//   res.sendFile(path.join(__dirname,'client/dist', 'index.html'))
+// });
 
 app.get('/', async (req, res) => {
   let shows = [];
