@@ -49,7 +49,7 @@ function Show(){
     event.preventDefault();
     navigate(`/`); 
   }
-
+  
   return show.name && (
     <div className="show">
       <button className="back_from_search" onClick={handleBackButton}>Back to calendar</button>

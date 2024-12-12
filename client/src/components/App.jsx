@@ -15,8 +15,26 @@ import Register from './Register';
 import Logout from './Logout';
 
 function App() {
-    const [user, setUser] = useState();
+    // const [user, setUser] = useState();
+    const [name, setName] = useState();
     
+    useEffect(() => {
+        axios.get(PORT, {withCredentials: true})
+            .then(response => {
+                if(response.data.user)
+                    {
+                    // setUser(response.data.user);
+                    setName(response.data.user.name)
+                  }
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+            });
+        }, []);
+
+    const handleLogin = (username) => {
+        setName(username);
+        };
   // const [count, setCount] = useState(0)
 
   // return (
@@ -43,17 +61,14 @@ function App() {
   //     </p>
   //   </>
   // )
-    function Header(){
+    function Header(props){
         const location = useLocation();
         const [searchData, setSearchData] = useState({});
         const navigate = useNavigate();
-
-
     function handleSearch(event){
         event.preventDefault();
         navigate(`/search?q=${searchData.searchValue}`); 
     }
-
     function handleChange(event) {
         setSearchData({
             ...searchData,
@@ -61,7 +76,7 @@ function App() {
         });
       }
 
-        return(
+        return((location.pathname !== '/login' && location.pathname !=='/register' && props.user)?
             <header>
             
             <div className='titles_container'>
@@ -73,14 +88,13 @@ function App() {
                 <button className='search_button' type='submit'><span>serach</span></button>
             </form>
             {
-             (location.pathname !== '/login' && location.pathname !=='/register')?
             <div className='logout-container'>
                 {/* <p>hello {message.user.email}</p>  */}
+                <p>Hello {props.user}!</p>
                 <Logout />
             </div>
-             :''
             }
-            </header>
+            </header>:''
         )
     }
 
@@ -95,6 +109,7 @@ function App() {
             if(response.data.user)
                 {
                     setMessage((response.data));
+                    
                 }
             else{
                 navigate('/login')
@@ -130,8 +145,7 @@ function App() {
 
   return (
     <Router>
-        {(location.pathname !== '/login' && location.pathname !=='/register')?<Header/>:''}
-        
+        <Header user={name}/>
             
         <div className='content'>
             <Routes>
@@ -139,8 +153,8 @@ function App() {
                 <Route path="/" element={<Home/>} />
                 <Route path="/search" element={<Search/>}/>
                 <Route path="/show" element={<Show />}/>
-                <Route path='/login' element={<Login/>}/>
-                <Route path='/register' element={<Register/>}/>
+                <Route path='/login' element={<Login onLogin={handleLogin}/>}/>
+                <Route path='/register' element={<Register onLogin={handleLogin}/>}/>
             </Routes>
         </div>
     </Router>

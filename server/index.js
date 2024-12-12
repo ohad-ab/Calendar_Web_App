@@ -102,6 +102,8 @@ app.post('/logout', (req,res)=>{
 app.post('/register', async (req,res)=>{
   const email = req.body.username;
   const password = req.body.password;
+  const repeatedPassword = req.body.repeatedPassword;
+  const name = req.body.name;
 
   try {
     const checkResult = await db.query("SELECT * FROM users WHERE email = $1", [
@@ -110,23 +112,26 @@ app.post('/register', async (req,res)=>{
 
     if (checkResult.rows.length > 0) {
       res.json({success: false, message:"Email already exists in the system"});
-    } else {
+    } else if(password === repeatedPassword){
       bcrypt.hash(password, saltRounds, async (err, hash) => {
         if (err) {
           console.error("Error hashing password:", err);
         } else {
           const result = await db.query(
-            "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
-            [email, hash]
+            "INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING *",
+            [email, hash, name]
           );
           const user = result.rows[0];
           console.log(user);
           req.login(user, (err) => {
             console.log("success");
-            res.json({success: true});
+            res.json({success: true, user});
           });
         }
       });
+    }
+    else{
+      res.status(400).json({error: 'The password was not repeated correctly'})
     }
   } catch (err) {
     console.log(err);
@@ -140,7 +145,7 @@ app.get('/search', async (req,res)=>{
 
 app.get('/show', async (req,res)=>{
   const response = await axios.get(`${API_URL}/shows/${req.query.id}`);
-  const result = await db.query(`SELECT show_id FROM users_shows WHERE show_id=${response.data.id} AND show_id=${req.user.id} `);
+  const result = await db.query(`SELECT show_id FROM users_shows WHERE show_id=${response.data.id} AND user_id=${req.user.id} `);
   const added = result.rows.length > 0? true:false;
   res.json({show: response.data, added: added, user: req.user});
 })
@@ -187,7 +192,6 @@ passport.use(
       if (result.rows.length > 0) {
         const user = result.rows[0];
         const storedHashedPassword = user.password;
-        console.log(username, user);
         bcrypt.compare(password, storedHashedPassword, (err, valid) => {
           if (err) {
             //Error with password check

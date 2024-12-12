@@ -53,7 +53,10 @@ header{
 }
 .logout-container{
   flex: 1;
+  display: flex;
+  justify-content: end;
   text-align: right;
+  gap: 1rem;
   /* margin-left: 25%; */
 }
 .titles-container{
@@ -145,6 +148,13 @@ button:focus-visible {
   width: 32px;
   padding: 0;
   border: 0;
+  background-color: white;
+}
+
+.arrow_button:focus{
+  outline: none;
+}
+.arrow_button:hover{
   background-color: white;
 }
 .arrow{
@@ -318,4 +328,48 @@ button:focus-visible {
   display: flex;
   justify-content: start;
   margin-bottom: 20px;
+}
+
+.login-form{
+  display: flex;
+  justify-content: center;
+  gap: 0.1rem;
+}
+.login-button{
+  color: white;
+  background-color: rgb(0, 132, 255);
+  height: 25px;
+  width: 60px;
+  padding: 0;
+}
+
+.register-form-container{
+  display: flex;
+  justify-content: center;
+}
+
+.register-form{
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.5rem;
+  width: 20rem;
+}
+
+.register-input{
+  height: 1.5rem;
+  width: 20rem;
+  border-radius: 1rem;
+  border-color: black;
+  border: 0.1rem solid;
+}
+
+.register-button{
+  color: white;
+  background-color: rgb(0, 132, 255);
+  height: 25px;
+  width: 60px;
+  padding: 0;
+  width: 5rem;
 }
