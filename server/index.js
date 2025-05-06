@@ -60,7 +60,7 @@ app.get('/', async (req, res) => {
   let shows = [];
   if(req.isAuthenticated())
     {
-      const result = await db.query("SELECT * FROM episodes INNER JOIN shows ON episodes.show_id=shows.show_id INNER JOIN users_shows AS us ON us.show_id=shows.show_id WHERE us.user_id=$1 ORDER BY air_date ASC",[req.user.id]);
+      const result = await db.query("SELECT * FROM episodes INNER JOIN shows ON episodes.show_id=shows.show_id INNER JOIN users_shows AS us ON us.show_id=shows.show_id WHERE us.user_id=$1 AND us.added=true ORDER BY air_date ASC",[req.user.id]);
       shows = result.rows;
     }
   res.json({shows: shows, user: req.user});
@@ -145,21 +145,29 @@ app.get('/search', async (req,res)=>{
 
 app.get('/show', async (req,res)=>{
   const response = await axios.get(`${API_URL}/shows/${req.query.id}`);
-  const result = await db.query(`SELECT show_id FROM users_shows WHERE show_id=${response.data.id} AND user_id=${req.user.id} `);
+  const result = await db.query(`SELECT show_id, user_rating FROM users_shows WHERE show_id=${response.data.id} AND user_id=${req.user.id} `);
+  const showLocal = await db.query("SELECT rating FROM shows WHERE show_id=$1",[req.query.id]);
   const added = result.rows.length > 0? true:false;
-  res.json({show: response.data, added: added, user: req.user});
+  res.json({show: response.data, added: added, user: req.user, userRating: result.rows[0]?.user_rating || null, totalRating: showLocal.rows[0]?.rating || null});
 })
 
 app.post('/add', async (req,res)=>{
   const show = req.body;
   try {
     const response = await axios.get(`https://api.tvmaze.com/shows/${show.id}/episodes`);
-    await db.query('INSERT INTO shows (show_id, name, network, web_channel, image_url) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (show_id) DO NOTHING', [show.id, show.name, show.network && show.network.name, show.webChannel && show.webChannel.name, show.image.medium]);
-    await db.query('INSERT INTO users_shows (user_id, show_id) VALUES ($1, $2)',[req.user.id, show.id]);
-    for(const element of response.data){
-      await db.query("INSERT INTO episodes VALUES($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING",[element.id, show.id, element.url, element.name, element.season, element.number, element.airdate.split('T')[0], element.airtime || null]);
-    }
+    const result = await db.query('SELECT * FROM users_shows WHERE user_id=$1 AND show_id=$2',[req.user.id, show.id]);
+    if(result.rows.length === 0)
+    {
+      await db.query('INSERT INTO shows (show_id, name, network, web_channel, image_url) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (show_id) DO NOTHING', [show.id, show.name, show.network && show.network.name, show.webChannel && show.webChannel.name, show.image.medium]);
+      await db.query('INSERT INTO users_shows (user_id, show_id, added) VALUES ($1, $2, $3)',[req.user.id, show.id, true]);
+      for(const element of response.data){
+        await db.query("INSERT INTO episodes VALUES($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING",[element.id, show.id, element.url, element.name, element.season, element.number, element.airdate.split('T')[0], element.airtime || null]);
+      }
 
+    }
+    else{
+      await db.query('UPDATE users_shows SET added = $1 WHERE user_id=$2 AND show_id=$3',[true, req.user.id, show.id]);
+    }
     res.sendStatus(200);
   } catch (error) {
     console.log(error);
@@ -167,15 +175,50 @@ app.post('/add', async (req,res)=>{
   }
 });
 
+app.post('/rate', async (req,res)=>{
+  const show = req.body.show;
+  const rating = req.body.rate;
+  try{
+    const response = await axios.get(`https://api.tvmaze.com/shows/${show.id}/episodes`);
+  const result = await db.query('SELECT * FROM users_shows WHERE user_id=$1 AND show_id=$2',[req.user.id, show.id]);
+  if(result.rows.length === 0)
+    {
+      await db.query('INSERT INTO shows (show_id, name, network, web_channel, image_url, rating, rater_num) VALUES ($1, $2, $3, $4, $5, $6, 1) ON CONFLICT (show_id) DO NOTHING', [show.id, show.name, show.network && show.network.name, show.webChannel && show.webChannel.name, show.image.medium, req.body.rate]);
+      await db.query('INSERT INTO users_shows (user_id, show_id, user_rating) VALUES ($1, $2, $3)',[req.user.id, show.id, rating]);
+      for(const element of response.data){
+        await db.query("INSERT INTO episodes VALUES($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING",[element.id, show.id, element.url, element.name, element.season, element.number, element.airdate.split('T')[0], element.airtime || null]);
+      }
+
+    }
+    else{
+      const ratingResult = await db.query('SELECT rating,rater_num FROM shows WHERE show_id = $1', [show.id]);
+      const oldRating = ratingResult.rows[0].rating;
+      const oldRaterNum = ratingResult.rows[0].rater_num;
+      const newRating = ((oldRating * oldRaterNum) + req.body.rate) / (oldRaterNum + 1);
+      await db.query('UPDATE users_shows SET user_rating = $1 WHERE user_id=$2 AND show_id=$3',[rating, req.user.id, show.id]);
+      await db.query('UPDATE shows SET rating= $1, rater_num= $2 WHERE show_id= $3',[newRating, oldRaterNum + 1, show.id])
+    }
+    res.sendStatus(200);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+})
+
 app.post('/delete',async (req,res)=>{
   try {
-    await db.query('DELETE FROM users_shows WHERE show_id=$1',[req.body.id]);
-    const remainingUserShows = await db.query('SELECT show_id FROM users_shows WHERE show_id=$1' ,[req.body.id]);
-    if(remainingUserShows.rows.length === 0)
-    {
-      await db.query('DELETE FROM episodes WHERE show_id=$1',[req.body.id]);
-      await db.query('DELETE FROM shows WHERE show_id=$1',[req.body.id]); 
-    }   
+    if (!req.body.rate) {
+      await db.query('DELETE FROM users_shows WHERE show_id=$1 AND user_id=$2',[req.body.id, req.user.id]);
+      const remainingUserShows = await db.query('SELECT show_id FROM users_shows WHERE show_id=$1' ,[req.body.id]);
+      if(remainingUserShows.rows.length === 0)
+      {
+        await db.query('DELETE FROM episodes WHERE show_id=$1',[req.body.id]);
+        await db.query('DELETE FROM shows WHERE show_id=$1',[req.body.id]); 
+      }   
+    }
+    else{
+      await db.query('UPDATE users_shows SET added = $1 WHERE user_id=$2 AND show_id=$3',[false, req.user.id, req.body.id]);
+    }
     res.sendStatus(200);
   } catch (error) {
     console.log(error);

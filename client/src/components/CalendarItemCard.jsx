@@ -13,7 +13,8 @@ function CalendarItemCard({episodes, fadeOut}){
         {episode.air_time && <p>{episode.air_time}</p>}
         {episode.network && <p>{episode.network}</p>}
         {episode.web_channel && <p>{episode.web_channel}</p>}
-        <a href={episode.url}>Series Site</a>
+        <a href={episode.url}>Series Site</a><br/>
+        <a href={`show?id=${episode.show_id}`}>Series Page</a>
         <br/>
       </div>)
       })

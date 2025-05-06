@@ -7,11 +7,12 @@ import nextIcon from "../../images/icons/arrow-point-to-right.png"
 function Calendar(props){
   const shows = props.shows;
   const date = new Date();
-  const [currMonth, setCurrMonth] = useState(new Date());let epInd = 0;
+  const [currMonth, setCurrMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [infoVisible, setInfoVisible] = useState(false);
   const [infoFadeOut, setInfoFadeOut] = useState(false);
   
+  //A dictionary where the keys are days of the month and the values are arrays with episodes on that day
   const episodesByDate = shows.reduce((acc, show) => {
     const day = show.air_date.split('T')[0];
     if (!acc[day]) acc[day] = [];
@@ -19,13 +20,11 @@ function Calendar(props){
     return acc;
   }, {});
 
-  const arr = Array.from({length: 29},(_,i)=>{
-    const episode = episodesByDate[new Date(Date.UTC(currMonth.getFullYear(), currMonth.getMonth(), i+1)).toISOString()];
-    // console.log(episode)
-    return episode
+  // const arr = Array.from({length: 29},(_,i)=>{
+  //   const episode = episodesByDate[new Date(Date.UTC(currMonth.getFullYear(), currMonth.getMonth(), i+1)).toISOString()];
+  //   return episode
 
-  })
-  // console.log(arr)
+  // })
   const firstDayOfMonth = new Date(currMonth.getFullYear(), currMonth.getMonth(), 1).getDay();
   const lastDayInMonth = new Date(currMonth.getFullYear(), currMonth.getMonth()+1, 0).getDay();
   const daysInMonth = new Date(currMonth.getFullYear(), currMonth.getMonth()+1, 0).getDate();
@@ -37,9 +36,11 @@ function Calendar(props){
     ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day)=>(
       <div key={day} className="day-name">{day}</div>
     ))
+    //Render blank boxes for days on the first week that are not in the month
     for(let i=0; i<firstDayOfMonth; i++){
       calendar.push(<p key={'bs'+i} className="day blank"></p>)
     }
+    //For each day render info for every episode on that day, if exists
     for(let day=1; day<=daysInMonth; day++){
       const currDate = new Date(Date.UTC(currMonth.getFullYear(), currMonth.getMonth(), day));
         const episodes = episodesByDate[currDate.toISOString().split('T')[0]];
@@ -63,6 +64,7 @@ function Calendar(props){
       return calendar;
   }
 
+  //Info card fade out functionality
   async function fadeOut() {
     setInfoFadeOut(true)
 
@@ -73,14 +75,15 @@ function Calendar(props){
         setInfoFadeOut(false); 
   }
 
+  //Toggle info card
   async function handleInfo(e, day, episodes){
     const dayElement = e.target.closest('.calendar_info_card');
-    if(selectedDay && !dayElement)
+    if(selectedDay && !dayElement)//If info card is open and clicked ouside of it, close it
     {
     await fadeOut();
       
     }
-    if(episodes && selectedDay !=day){
+    if(episodes && selectedDay !=day){//If info is avaiable and the card is closed
       setInfoVisible(true);
     setSelectedDay(day);
     }
@@ -90,7 +93,6 @@ function Calendar(props){
   const handleBodyClick = (event) => {
     const calendarElement = document.querySelector('.calendar');
     const dayElement = event.target.closest('.calendar_info_card');
-    console.log((!calendarElement.contains(event.target)) && !dayElement)
     // If click is outside the calendar or on a different day, close the info card
     
     if ((!calendarElement.contains(event.target)) && !dayElement) {

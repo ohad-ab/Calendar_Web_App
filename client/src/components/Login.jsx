@@ -42,8 +42,8 @@ function Login(props){
     <div className="login">
       <h1 className="home-title">Calendar</h1>
       <form className="login-form" onSubmit={handleSubmit}>
-      <input name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
-      <input name="password" placeholder="Password" onChange={(e)=>setPaswword(e.target.value)} required/>
+      <input value={username} name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
+      <input value={password} name="password" placeholder="Password" onChange={(e)=>setPaswword(e.target.value)} required/>
       <button className='login-button' type='submit'>Login</button>
       </form>
       <a href="/register">register</a>
