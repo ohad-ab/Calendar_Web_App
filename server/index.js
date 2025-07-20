@@ -1,21 +1,22 @@
 import express from "express";
 import bodyParser from "body-parser";
 import cors from 'cors';
-import path from 'path';
 import axios from "axios";
 import pg from "pg";
-import env from "dotenv";
+import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import passport from "passport";
-import { Strategy } from "passport-local";
+import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from 'connect-pg-simple';
 
+dotenv.config();
+
 const app = express();
 const port = process.env.PORT || 5000;
-const API_URL = "https://api.tvmaze.com"
+const API_URL = "https://api.tvmaze.com";
 const saltRounds = 10;
-env.config();
+
 const db = new pg.Client({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
@@ -27,245 +28,276 @@ db.connect();
 
 const PgSession = connectPgSimple(session);
 
-// app.use(express.static(path.join(__dirname, 'client/dist')))
-
+// Session setup with Postgres store
 app.use(
   session({
-    store: new PgSession({pool: db}),
+    store: new PgSession({ pool: db }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie:{
-      maxAge:1000*60*60*24
-    }
+    cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 1 day
   })
 );
-
-
 
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true,
 }));
+
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// app.get('*', (req,res)=>{
-//   res.sendFile(path.join(__dirname,'client/dist', 'index.html'))
-// });
+// --- ROUTES ---
 
+// Get shows for authenticated user
 app.get('/', async (req, res) => {
   let shows = [];
-  if(req.isAuthenticated())
-    {
-      const result = await db.query("SELECT * FROM episodes INNER JOIN shows ON episodes.show_id=shows.show_id INNER JOIN users_shows AS us ON us.show_id=shows.show_id WHERE us.user_id=$1 AND us.added=true ORDER BY air_date ASC",[req.user.id]);
-      shows = result.rows;
-    }
-  res.json({shows: shows, user: req.user});
-})
+  if (req.isAuthenticated()) {
+    const result = await db.query(
+      `SELECT * FROM episodes 
+       INNER JOIN shows ON episodes.show_id = shows.show_id 
+       INNER JOIN users_shows AS us ON us.show_id = shows.show_id 
+       WHERE us.user_id = $1 AND us.added = true 
+       ORDER BY air_date ASC`,
+      [req.user.id]
+    );
+    shows = result.rows;
+  }
+  res.json({ shows, user: req.user });
+});
 
+// Login endpoint using Passport local strategy
 app.post('/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
-      if (err) {
-          return next(err);
-      }
-      if (!user) {
-          return res.json({ success: false, message: info.message });
-      }
-      req.logIn(user, (err) => {
-          if (err) {
-              return next(err);
-          }
-          return res.json({ success: true, message: 'Authentication successful', user });
-      });
+    if (err) return next(err);
+    if (!user) return res.json({ success: false, message: info.message });
+
+    req.logIn(user, (err) => {
+      if (err) return next(err);
+      return res.json({ success: true, message: 'Authentication successful', user });
+    });
   })(req, res, next);
 });
 
-app.post('/logout', (req,res)=>{
-  req.logOut({}, (err)=>{
-    if(err){
-      console.log(err);
+// Logout endpoint — destroys session
+app.post('/logout', (req, res) => {
+  req.logOut({}, (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Logout failed' });
     }
     req.session.destroy((err) => {
       if (err) {
-        console.log('Error during session destruction:', err);
+        console.error('Error during session destruction:', err);
         return res.status(500).json({ success: false, message: 'Logout failed' });
       }
-      console.log('Logout successful, session destroyed.');
-      return res.json({ success: true, message: 'Logout successful' });
+      res.json({ success: true, message: 'Logout successful' });
     });
   });
-})
+});
 
-app.post('/register', async (req,res)=>{
-  const email = req.body.username;
-  const password = req.body.password;
-  const repeatedPassword = req.body.repeatedPassword;
-  const name = req.body.name;
+// Registration endpoint
+app.post('/register', async (req, res) => {
+  const { username: email, password, repeatedPassword, name } = req.body;
 
   try {
-    const checkResult = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-
+    // Check if email already exists
+    const checkResult = await db.query("SELECT * FROM users WHERE email = $1", [email]);
     if (checkResult.rows.length > 0) {
-      res.json({success: false, message:"Email already exists in the system"});
-    } else if(password === repeatedPassword){
-      bcrypt.hash(password, saltRounds, async (err, hash) => {
-        if (err) {
-          console.error("Error hashing password:", err);
-        } else {
-          const result = await db.query(
-            "INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING *",
-            [email, hash, name]
-          );
-          const user = result.rows[0];
-          console.log(user);
-          req.login(user, (err) => {
-            console.log("success");
-            res.json({success: true, user});
-          });
-        }
+      return res.json({ success: false, message: "Email already exists in the system" });
+    }
+
+    if (password !== repeatedPassword) {
+      return res.status(400).json({ error: 'The password was not repeated correctly' });
+    }
+
+    // Hash password and insert new user
+    bcrypt.hash(password, saltRounds, async (err, hash) => {
+      if (err) {
+        console.error("Error hashing password:", err);
+        return res.status(500).json({ success: false, message: 'Error processing request' });
+      }
+      const result = await db.query(
+        "INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING *",
+        [email, hash, name]
+      );
+      const user = result.rows[0];
+      req.login(user, (err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Login after registration failed' });
+        res.json({ success: true, user });
       });
-    }
-    else{
-      res.status(400).json({error: 'The password was not repeated correctly'})
-    }
+    });
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-})
+});
 
-app.get('/search', async (req,res)=>{
-  const response = await axios.get(`${API_URL}/search/shows?q=${req.query.q}`);
-  res.json({result: response.data, user: req.user});
-})
+// Search shows via TVmaze API
+app.get('/search', async (req, res) => {
+  try {
+    const response = await axios.get(`${API_URL}/search/shows?q=${req.query.q}`);
+    res.json({ result: response.data, user: req.user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Search failed' });
+  }
+});
 
-app.get('/show', async (req,res)=>{
-  const response = await axios.get(`${API_URL}/shows/${req.query.id}`);
-  const result = await db.query(`SELECT show_id, user_rating FROM users_shows WHERE show_id=${response.data.id} AND user_id=${req.user.id} `);
-  const showLocal = await db.query("SELECT rating FROM shows WHERE show_id=$1",[req.query.id]);
-  const added = result.rows.length > 0? true:false;
-  res.json({show: response.data, added: added, user: req.user, userRating: result.rows[0]?.user_rating || null, totalRating: showLocal.rows[0]?.rating || null});
-})
+// Get show details and user-related info
+app.get('/show', async (req, res) => {
+  try {
+    const showResponse = await axios.get(`${API_URL}/shows/${req.query.id}`);
+    const userShowResult = await db.query(
+      `SELECT show_id, user_rating FROM users_shows WHERE show_id=$1 AND user_id=$2`,
+      [req.query.id, req.user.id]
+    );
+    const showLocal = await db.query("SELECT rating FROM shows WHERE show_id=$1", [req.query.id]);
+    const added = userShowResult.rows.length > 0;
+    res.json({
+      show: showResponse.data,
+      added,
+      user: req.user,
+      userRating: userShowResult.rows[0]?.user_rating || null,
+      totalRating: showLocal.rows[0]?.rating || null
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Failed to get show' });
+  }
+});
 
-app.post('/add', async (req,res)=>{
+// Add show and episodes to user's calendar
+app.post('/add', async (req, res) => {
   const show = req.body;
   try {
-    const response = await axios.get(`https://api.tvmaze.com/shows/${show.id}/episodes`);
-    const result = await db.query('SELECT * FROM users_shows WHERE user_id=$1 AND show_id=$2',[req.user.id, show.id]);
-    if(result.rows.length === 0)
-    {
-      await db.query('INSERT INTO shows (show_id, name, network, web_channel, image_url) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (show_id) DO NOTHING', [show.id, show.name, show.network && show.network.name, show.webChannel && show.webChannel.name, show.image.medium]);
-      await db.query('INSERT INTO users_shows (user_id, show_id, added) VALUES ($1, $2, $3)',[req.user.id, show.id, true]);
-      for(const element of response.data){
-        await db.query("INSERT INTO episodes VALUES($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING",[element.id, show.id, element.url, element.name, element.season, element.number, element.airdate.split('T')[0], element.airtime || null]);
-      }
+    const episodesResponse = await axios.get(`${API_URL}/shows/${show.id}/episodes`);
+    const userShowResult = await db.query('SELECT * FROM users_shows WHERE user_id=$1 AND show_id=$2', [req.user.id, show.id]);
 
-    }
-    else{
-      await db.query('UPDATE users_shows SET added = $1 WHERE user_id=$2 AND show_id=$3',[true, req.user.id, show.id]);
+    if (userShowResult.rows.length === 0) {
+      await db.query(
+        `INSERT INTO shows (show_id, name, network, web_channel, image_url) 
+         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (show_id) DO NOTHING`,
+        [show.id, show.name, show.network?.name || null, show.webChannel?.name || null, show.image.medium]
+      );
+      await db.query(
+        `INSERT INTO users_shows (user_id, show_id, added) VALUES ($1, $2, $3)`,
+        [req.user.id, show.id, true]
+      );
+      for (const ep of episodesResponse.data) {
+        await db.query(
+          `INSERT INTO episodes (episode_id, show_id, url, name, season, number, air_date, air_time) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING`,
+          [ep.id, show.id, ep.url, ep.name, ep.season, ep.number, ep.airdate, ep.airtime || null]
+        );
+      }
+    } else {
+      // Mark as added if previously removed
+      await db.query(
+        `UPDATE users_shows SET added = true WHERE user_id=$1 AND show_id=$2`,
+        [req.user.id, show.id]
+      );
     }
     res.sendStatus(200);
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.error(err);
     res.sendStatus(500);
   }
 });
 
-app.post('/rate', async (req,res)=>{
-  const show = req.body.show;
-  const rating = req.body.rate;
-  try{
-    const response = await axios.get(`https://api.tvmaze.com/shows/${show.id}/episodes`);
-  const result = await db.query('SELECT * FROM users_shows WHERE user_id=$1 AND show_id=$2',[req.user.id, show.id]);
-  if(result.rows.length === 0)
-    {
-      await db.query('INSERT INTO shows (show_id, name, network, web_channel, image_url, rating, rater_num) VALUES ($1, $2, $3, $4, $5, $6, 1) ON CONFLICT (show_id) DO NOTHING', [show.id, show.name, show.network && show.network.name, show.webChannel && show.webChannel.name, show.image.medium, req.body.rate]);
-      await db.query('INSERT INTO users_shows (user_id, show_id, user_rating) VALUES ($1, $2, $3)',[req.user.id, show.id, rating]);
-      for(const element of response.data){
-        await db.query("INSERT INTO episodes VALUES($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING",[element.id, show.id, element.url, element.name, element.season, element.number, element.airdate.split('T')[0], element.airtime || null]);
-      }
+// Rate a show
+app.post('/rate', async (req, res) => {
+  const { show, rate } = req.body;
+  try {
+    const episodesResponse = await axios.get(`${API_URL}/shows/${show.id}/episodes`);
+    const userShowResult = await db.query('SELECT * FROM users_shows WHERE user_id=$1 AND show_id=$2', [req.user.id, show.id]);
 
-    }
-    else{
-      const ratingResult = await db.query('SELECT rating,rater_num FROM shows WHERE show_id = $1', [show.id]);
+    if (userShowResult.rows.length === 0) {
+      // New user-show rating
+      await db.query(
+        `INSERT INTO shows (show_id, name, network, web_channel, image_url, rating, rater_num) 
+         VALUES ($1, $2, $3, $4, $5, $6, 1) ON CONFLICT (show_id) DO NOTHING`,
+        [show.id, show.name, show.network?.name || null, show.webChannel?.name || null, show.image.medium, rate]
+      );
+      await db.query(
+        `INSERT INTO users_shows (user_id, show_id, user_rating) VALUES ($1, $2, $3)`,
+        [req.user.id, show.id, rate]
+      );
+      for (const ep of episodesResponse.data) {
+        await db.query(
+          `INSERT INTO episodes (episode_id, show_id, url, name, season, number, air_date, air_time) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT(episode_id) DO NOTHING`,
+          [ep.id, show.id, ep.url, ep.name, ep.season, ep.number, ep.airdate, ep.airtime || null]
+        );
+      }
+    } else {
+      // Update rating and overall show rating
+      const ratingResult = await db.query('SELECT rating, rater_num FROM shows WHERE show_id = $1', [show.id]);
       const oldRating = ratingResult.rows[0].rating;
       const oldRaterNum = ratingResult.rows[0].rater_num;
-      const newRating = ((oldRating * oldRaterNum) + req.body.rate) / (oldRaterNum + 1);
-      await db.query('UPDATE users_shows SET user_rating = $1 WHERE user_id=$2 AND show_id=$3',[rating, req.user.id, show.id]);
-      await db.query('UPDATE shows SET rating= $1, rater_num= $2 WHERE show_id= $3',[newRating, oldRaterNum + 1, show.id])
+      const newRating = ((oldRating * oldRaterNum) + rate) / (oldRaterNum + 1);
+
+      await db.query('UPDATE users_shows SET user_rating = $1 WHERE user_id = $2 AND show_id = $3', [rate, req.user.id, show.id]);
+      await db.query('UPDATE shows SET rating = $1, rater_num = $2 WHERE show_id = $3', [newRating, oldRaterNum + 1, show.id]);
     }
     res.sendStatus(200);
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.error(err);
     res.sendStatus(500);
   }
-})
+});
 
-app.post('/delete',async (req,res)=>{
+// Delete a show from user's calendar
+app.post('/delete', async (req, res) => {
   try {
     if (!req.body.rate) {
-      await db.query('DELETE FROM users_shows WHERE show_id=$1 AND user_id=$2',[req.body.id, req.user.id]);
-      const remainingUserShows = await db.query('SELECT show_id FROM users_shows WHERE show_id=$1' ,[req.body.id]);
-      if(remainingUserShows.rows.length === 0)
-      {
-        await db.query('DELETE FROM episodes WHERE show_id=$1',[req.body.id]);
-        await db.query('DELETE FROM shows WHERE show_id=$1',[req.body.id]); 
-      }   
-    }
-    else{
-      await db.query('UPDATE users_shows SET added = $1 WHERE user_id=$2 AND show_id=$3',[false, req.user.id, req.body.id]);
+      await db.query('DELETE FROM users_shows WHERE show_id=$1 AND user_id=$2', [req.body.id, req.user.id]);
+      const remainingUserShows = await db.query('SELECT show_id FROM users_shows WHERE show_id=$1', [req.body.id]);
+      if (remainingUserShows.rows.length === 0) {
+        await db.query('DELETE FROM episodes WHERE show_id=$1', [req.body.id]);
+        await db.query('DELETE FROM shows WHERE show_id=$1', [req.body.id]);
+      }
+    } else {
+      // If rate exists, mark as removed (added=false)
+      await db.query('UPDATE users_shows SET added = false WHERE user_id=$1 AND show_id=$2', [req.user.id, req.body.id]);
     }
     res.sendStatus(200);
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    console.error(err);
     res.sendStatus(500);
   }
-})
+});
 
-passport.use(
-  new Strategy(async function verify(username, password, cb) {
-    try {
-      const result = await db.query("SELECT * FROM users WHERE email = $1 ", [
-        username,
-      ]);
-      if (result.rows.length > 0) {
-        const user = result.rows[0];
-        const storedHashedPassword = user.password;
-        bcrypt.compare(password, storedHashedPassword, (err, valid) => {
-          if (err) {
-            //Error with password check
-            console.error("Error comparing passwords:", err);
-            return cb(err);
-          } else {
-            if (valid) {
-              //Passed password check
-              return cb(null, user);
-            } else {
-              //Did not pass password check
-              return cb(null, false);
-            }
-          }
-        });
-      } else {
-        return cb("User not found");
-      }
-    } catch (err) {
-      console.log(err);
+// Passport local strategy setup
+passport.use(new LocalStrategy(async (username, password, done) => {
+  try {
+    const result = await db.query("SELECT * FROM users WHERE email = $1", [username]);
+    if (result.rows.length === 0) {
+      return done(null, false, { message: "User not found" });
     }
-  })
-);
+    const user = result.rows[0];
+    bcrypt.compare(password, user.password, (err, valid) => {
+      if (err) return done(err);
+      if (valid) return done(null, user);
+      else return done(null, false, { message: "Incorrect password" });
+    });
+  } catch (err) {
+    console.error(err);
+    return done(err);
+  }
+}));
 
-passport.serializeUser((user, cb) => {
-  cb(null, user);
-});
-passport.deserializeUser((user, cb) => {
-  cb(null, user);
+passport.serializeUser((user, done) => {
+  done(null, user); // Could store only user.id here for efficiency
 });
 
-app.listen(port, ()=>{
-  console.log(`server is listening on port ${port}`)
+passport.deserializeUser((user, done) => {
+  done(null, user); // Could fetch fresh user from DB if needed
+});
+
+app.listen(port, () => {
+  console.log(`Server is listening on port ${port}`);
 });

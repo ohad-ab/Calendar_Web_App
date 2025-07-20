@@ -1,12 +1,14 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import SearchResult from "./SearchResult";
+import SearchResult from "../components/SearchResult";
 import { PORT } from "../../config";
 
 /**
- * Search is a component handling the search results page
- * 
+ * Component for displaying search results.
+ * Fetches results from the server using the 'q' query param.
+ *
+ * @returns {JSX.Element|null}
  */
 function Search() {
   const [searchResult, setResult] = useState();
@@ -30,7 +32,7 @@ function Search() {
           .catch(error => {
               console.error('Error fetching data:', error);
           });
-      }, []);
+      }, [query,navigate]);
     function handleBackButton(event){
       event.preventDefault();
       navigate(`/`); 
@@ -64,7 +66,7 @@ function Search() {
       </div>
     </div>
       
-  ):null;
+  ):<p>No results found.</p>;
 }
 
 export default Search;

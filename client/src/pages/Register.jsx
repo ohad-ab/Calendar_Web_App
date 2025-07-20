@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { PORT } from "../../config";
-
+/**
+ * Register component for user sign-up and authentication.
+ *
+ * @param {{ onLogin: function }} props - Callback for updating parent on successful registration.
+ * @returns {JSX.Element}
+ */
 function Register(props){
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
@@ -28,13 +33,14 @@ function Register(props){
     if(password !== repeatPassword)
       alert("Please repeat the password correctly");
     else{
-      axios.post(PORT+'/register', {username: username, password: password, repeatedPassword: repeatPassword ,name: name}, {withCredentials: true}).then((response)=>{
-      if(response.data.success){
-        props.onLogin(response.data.user.name);
+      axios.post(PORT+'/register', {username, password, repeatedPassword: repeatPassword ,name}, {withCredentials: true}).then((response)=>{
+      const { success, user, message } = response.data;
+      if(success){
+        props.onLogin(user.name);
         navigate('/')
       }
       else{
-        alert(response.data.message)
+        alert(message)
       }
       }).catch((error)=>{
         alert(error);
@@ -48,12 +54,12 @@ function Register(props){
       <div className="register-form-container">
         <form className="register-form" onSubmit={handleSubmit} >
           <h2>Register</h2>
-          <input className="register-input" name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
+          <input className="register-input" name="username" placeholder="Email" type="email" onChange={(e)=>setUsername(e.target.value)} required/>
           <input className="register-input" name="name" placeholder="Name" onChange={(e)=>setName(e.target.value)} required/>
           <input className="register-input" name="password" placeholder="Password" type="password" onChange={(e)=>setPaswword(e.target.value)} required/>
           <input className="register-input" name="password" placeholder="Repeat Password" type="password" onChange={(e)=>setRepeatPassword(e.target.value)} required/>
           <button className='register-button' type='submit'>Register</button>
-          <a href="/login">login</a>
+          <Link to="/login">Login</Link>
         </form>
         </div>
     </div>

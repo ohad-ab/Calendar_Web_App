@@ -1,11 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { PORT } from "../../config";
 
+/**
+ * Login component for user authentication.
+ *
+ * @param {{ onLogin: function }} props - Callback for successful login.
+ * @returns {JSX.Element}
+ */
 function Login(props){
   const [username, setUsername] = useState('');
-  const [password, setPaswword] = useState('');
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,11 +48,11 @@ function Login(props){
     <div className="login">
       <h1 className="home-title">Calendar</h1>
       <form className="login-form" onSubmit={handleSubmit}>
-      <input value={username} name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
-      <input value={password} name="password" placeholder="Password" onChange={(e)=>setPaswword(e.target.value)} required/>
+      <input type="email" value={username} name="username" placeholder="Email" onChange={(e)=>setUsername(e.target.value)} required/>
+      <input value={password} name="password" placeholder="Password" onChange={(e)=>setPassword(e.target.value)} required/>
       <button className='login-button' type='submit'>Login</button>
       </form>
-      <a href="/register">register</a>
+      <Link to="/register">Register</Link>
     </div>
   )
 }

@@ -1,11 +1,18 @@
-import React, { useEffect, useState } from "react";
-import CalendarItem from "./CalendarItem";
-import CalendarItemCard from "./CalendarItemCard";
+import { useEffect, useState, useMemo } from "react";
+import CalendarItem from "../components/CalendarItem";
+import CalendarItemCard from "../components/CalendarItemCard";
 import prevIcon from "../../images/icons/left-arrow.png"
 import nextIcon from "../../images/icons/arrow-point-to-right.png"
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  
-function Calendar(props){
-  const shows = props.shows;
+/**
+ * Renders a monthly calendar view with episodes marked on their air dates.
+ *
+ * @param {{ shows: Array<Object> }} props - Array of episode objects with air_date, episode_id, etc.
+ * @returns {JSX.Element}
+ */
+function Calendar({shows}){
   const date = new Date();
   const [currMonth, setCurrMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
@@ -13,23 +20,21 @@ function Calendar(props){
   const [infoFadeOut, setInfoFadeOut] = useState(false);
   
   //A dictionary where the keys are days of the month and the values are arrays with episodes on that day
-  const episodesByDate = shows.reduce((acc, show) => {
-    const day = show.air_date.split('T')[0];
-    if (!acc[day]) acc[day] = [];
-    acc[day].push(show);
-    return acc;
+  const episodesByDate = useMemo(()=>{
+    return shows.reduce((acc, show) => {
+      const day = show.air_date.split('T')[0];
+      if (!acc[day]) acc[day] = [];
+      acc[day].push(show);
+      return acc;
   }, {});
+  }) 
 
-  // const arr = Array.from({length: 29},(_,i)=>{
-  //   const episode = episodesByDate[new Date(Date.UTC(currMonth.getFullYear(), currMonth.getMonth(), i+1)).toISOString()];
-  //   return episode
-
-  // })
   const firstDayOfMonth = new Date(currMonth.getFullYear(), currMonth.getMonth(), 1).getDay();
   const lastDayInMonth = new Date(currMonth.getFullYear(), currMonth.getMonth()+1, 0).getDay();
   const daysInMonth = new Date(currMonth.getFullYear(), currMonth.getMonth()+1, 0).getDate();
   const numberOfRows = Math.ceil((firstDayOfMonth + daysInMonth + 6 -lastDayInMonth)/7);
   const rowsStyle = `30px repeat(${numberOfRows}, 170px)`;
+  const INFO_FADE_DURATION = 300;
 
   function renderCalendar(){
     const calendar =
@@ -44,9 +49,9 @@ function Calendar(props){
     for(let day=1; day<=daysInMonth; day++){
       const currDate = new Date(Date.UTC(currMonth.getFullYear(), currMonth.getMonth(), day));
         const episodes = episodesByDate[currDate.toISOString().split('T')[0]];
-        const dayClass= `day ${episodes?'occ_day':''}`
+        const dayClassName= `day ${episodes?'occ_day':''}`
         calendar.push(
-          <div key={day} className={dayClass} onClick={(e) => handleInfo(e,day , episodes)}>
+          <div key={day} className={dayClassName} onClick={(e) => handleInfo(e,day , episodes)}>
             <p  className="day_date">{day}</p>
             <div className="calendar_item_list">
               {episodes && episodes.map(e=>(<CalendarItem key={e.episode_id} episode={e}/>))}
@@ -68,7 +73,7 @@ function Calendar(props){
   async function fadeOut() {
     setInfoFadeOut(true)
 
-      await wait(300);
+      await wait(INFO_FADE_DURATION);
       
         setInfoVisible(false);
         setSelectedDay(null);
@@ -83,12 +88,11 @@ function Calendar(props){
     await fadeOut();
       
     }
-    if(episodes && selectedDay !=day){//If info is avaiable and the card is closed
+    if(episodes && selectedDay !==day){//If info is avaiable and the card is closed
       setInfoVisible(true);
     setSelectedDay(day);
     }
   }
-  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   const handleBodyClick = (event) => {
     const calendarElement = document.querySelector('.calendar');
@@ -123,33 +127,13 @@ function Calendar(props){
 
   return(
     <div className="calendar">
-      {/* {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day)=>(
-        <div key={day} className="day-name">{day}</div>
-      ))}
-        {Array.from({length: firstDayOfMonth},(_,i)=>{
-          return <p key={'bs'+i} className="day blank"></p>
-        })}
-        {Array.from({length: daysInMonth},(_,i)=>{
-          const currDate = new Date(Date.UTC(calMonth.year, calMonth.month, i+1));
-          currDay++;
-          const episodes = episodesByDate[currDate.toISOString().split('T')[0]];
-          if (!episodes)
-            return <div className="day"><p key={currDay} className="day_date">{currDay}</p></div>
-          return episodes &&<div className="day"><p className="day_date">{currDay}</p>
-            {episodes.map(e=>(<CalendarItem key={e.episode_id} episode={e}/>))}
-            </div>
-
-        })}
-        {Array.from({length: 6 - lastDayInMonth},(_,i)=>{
-          return <p key={'be'+i} className="day blank"></p>
-        })} */}
       <div className="month_change">
         <button className="prev_month arrow_button" onClick={handleLeftArrowClick}>
-        <img className="arrow" src={prevIcon}/>
+        <img className="arrow" src={prevIcon} alt="Previous month"/>
         </button>
         <h3>{currMonth.toLocaleString('default', {month: 'long'})} {currMonth.getFullYear()}</h3>
         <button className="next_month arrow_button" onClick={handleRightArrowClick}>
-          <img className="arrow" src={nextIcon}/>
+          <img className="arrow" src={nextIcon} alt="Next month"/>
         </button>
       </div>
         

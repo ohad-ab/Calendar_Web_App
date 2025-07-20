@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { PORT } from "../../config";
-
+/**
+ * Logout component that clears the session and redirects to the login page.
+ *
+ * @returns {JSX.Element}
+ */
 function Logout(){
   const navigate = useNavigate();
 
@@ -14,7 +17,6 @@ function Logout(){
         {
           console.log("logout")
           navigate('/login')
-          // props.setUser(null);
         }
       else{
         alert(response.data.message)

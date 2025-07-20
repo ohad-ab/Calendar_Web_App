@@ -1,5 +1,9 @@
-import React from "react";
-
+/**
+ * Displays detailed episode info for all episodes on a specific calendar day.
+ *
+ * @param {{ episodes: Array<Object>, fadeOut: boolean }} props
+ * @returns {JSX.Element}
+ */
 function CalendarItemCard({episodes, fadeOut}){
   return (
     <div className={`calendar_info_card ${fadeOut?'fade_out':'fade_in'}`}>
